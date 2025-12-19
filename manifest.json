@@ -1,0 +1,111 @@
+{
+  "id": "com.community.anthropic-import",
+  "name": "Anthropic Claude Data Import",
+  "version": "1.0.0",
+  "description": "Import your conversation history from Anthropic Claude. Supports conversations, memories, and project data from GDPR/CCPA data exports.",
+  "author": {
+    "name": "MeDB Community",
+    "url": "https://github.com/medb-community/anthropic-import"
+  },
+  "type": "datasource",
+  "trustLevel": "community",
+  "provider": "anthropic",
+  "dataExportGuide": {
+    "privacyPolicyUrl": "https://www.anthropic.com/privacy",
+    "exportRequestUrl": "https://claude.ai/settings",
+    "providerDocs": [
+      {
+        "title": "Anthropic Privacy Center",
+        "url": "https://privacy.anthropic.com/"
+      },
+      {
+        "title": "Data Rights Request",
+        "url": "https://privacy.anthropic.com/en/articles/10308247-ccpa-cpra-rights-request-submission-process"
+      }
+    ],
+    "instructions": [
+      "Go to claude.ai and sign in to your account",
+      "Click on your profile icon in the bottom-left corner",
+      "Select 'Settings' from the menu",
+      "Navigate to the 'Account' section",
+      "Click 'Request Data Export' or 'Download Your Data'",
+      "Confirm your request via email if required",
+      "Wait for the export to be prepared and download the ZIP file",
+      "Extract the ZIP file to access your data"
+    ],
+    "estimatedWaitTime": "24-48 hours",
+    "exportFormats": ["zip", "json"],
+    "regionalNotes": "Data exports are available globally. EU/UK users may have additional rights under GDPR. California residents have rights under CCPA/CPRA.",
+    "limitations": [
+      "Does not include deleted conversations",
+      "Attachments and uploaded files may not be included",
+      "Real-time sync is not available (manual export only)"
+    ]
+  },
+  "importConfig": {
+    "fileTypes": ["zip", "directory"],
+    "expectedStructure": "ZIP file containing conversations.json, memories.json, projects.json, and users.json"
+  },
+  "eventMappings": {
+    "conversations": {
+      "sourceFilePattern": "**/conversations.json",
+      "eventsPath": "$[*]",
+      "eventType": "chat",
+      "mappings": {
+        "event_id": "${uuid}",
+        "event_timestamp": "${created_at}",
+        "event_type": "chat",
+        "title": "${name | default:Untitled Conversation}",
+        "description": "${summary}",
+        "metadata": {
+          "source": "anthropic",
+          "conversation_uuid": "${uuid}",
+          "updated_at": "${updated_at}",
+          "message_count": "${chat_messages | length}"
+        }
+      }
+    },
+    "memories": {
+      "sourceFilePattern": "**/memories.json",
+      "eventsPath": "$[*]",
+      "eventType": "ai_memory",
+      "mappings": {
+        "event_id": "${account_uuid}_memory",
+        "event_timestamp": "${__now__}",
+        "event_type": "ai_memory",
+        "title": "Claude Memory Snapshot",
+        "description": "${conversations_memory | truncate:500}",
+        "metadata": {
+          "source": "anthropic",
+          "account_uuid": "${account_uuid}",
+          "full_memory": "${conversations_memory}"
+        }
+      }
+    },
+    "projects": {
+      "sourceFilePattern": "**/projects.json",
+      "eventsPath": "$[*]",
+      "eventType": "project",
+      "mappings": {
+        "event_id": "${uuid}",
+        "event_timestamp": "${created_at}",
+        "event_type": "project",
+        "title": "${name | default:Untitled Project}",
+        "description": "${description}",
+        "metadata": {
+          "source": "anthropic",
+          "project_uuid": "${uuid}",
+          "is_private": "${is_private}",
+          "is_starter_project": "${is_starter_project}",
+          "creator_name": "${creator.full_name}",
+          "creator_uuid": "${creator.uuid}",
+          "updated_at": "${updated_at}",
+          "doc_count": "${docs | length}"
+        }
+      }
+    }
+  },
+  "permissions": {
+    "data": ["read:vault", "write:events"]
+  }
+}
